@@ -12,6 +12,7 @@
 | Configured key fails | Presence is not validation. Check provider account status, permissions, quotas and model support. |
 | Resend rejects Gmail sender | Use the onboarding sender for tests or verify a domain you own. |
 | Resend rejects recipient | Its onboarding domain only permits your account email; verify a domain for wider delivery. |
+| Discovery shows Invalid request | Rebuild the web image after updating code and refresh the browser. Mutations require both the session cookie and `X-Requested-With: Margin`; check the failing response before retrying. |
 | Discovery stays pending | Confirm worker process/heartbeat and inspect worker logs. |
 | Discovery returns no new articles | Known URLs are deduplicated; inspect active feeds and limits. |
 | Classification fails | Check enabled models, structured-output support, quotas and attempt records. |

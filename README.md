@@ -1,5 +1,7 @@
 # Margin
 
+[Documentation](https://anocerino-ai.github.io/margin/) · [Getting started](https://anocerino-ai.github.io/margin/installation/) · [Contributing](CONTRIBUTING.md)
+
 Discover engineering articles, classify them by topic, and turn selected sources into grounded English blog and LinkedIn drafts. Built with Vue 3, Vite, TypeScript and Python/FastAPI.
 
 ## Features

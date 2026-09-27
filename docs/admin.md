@@ -14,11 +14,13 @@ Enter your email, a password of at least 12 characters, and repeat it. Password 
 
 ## Apply changes
 
-For existing Docker containers:
+For existing Docker containers using SQLite:
 
 ```sh
 docker compose up -d --force-recreate api worker
 ```
+
+For D1, use `docker compose -f compose.yaml -f compose.d1.yaml up -d --force-recreate api worker` instead, preserving the selected storage profile.
 
 A plain container restart retains the old environment. For local development, stop and rerun `scripts/dev.py`. Sign in at the URL for the deployment you restarted.
 

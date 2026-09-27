@@ -132,7 +132,7 @@ MARGIN_D1_WORKER_URL=https://YOUR_BRIDGE.YOUR_SUBDOMAIN.workers.dev
 MARGIN_D1_WORKER_TOKEN=YOUR_EXISTING_BRIDGE_TOKEN
 ```
 
-Reuse the bridge URL and token from your private Mac `.env`; do not create another database. Existing D1 records and model settings are shared. The VM does not inherit provider overrides saved in your Mac's Docker volume: set provider keys in the VM environment or enter them through Settings after HTTPS is ready.
+When migrating an existing workspace, reuse its bridge URL and token from the original deployment’s private `.env`. For a new installation, provision and validate a bridge using the [Cloudflare D1 guide](cloudflare.md). Existing D1 records and model settings are shared. The VM does not inherit provider overrides saved in the original host’s Docker volume: set provider keys in the VM environment or enter them through Settings after HTTPS is ready.
 
 The current production settings validator also requires a legacy server token of at least 32 characters. Generate and save it without printing it:
 
@@ -189,13 +189,13 @@ Host networking here is for the Linux VM. Caddy obtains and renews certificates 
 
 Open `https://YOUR_SUBDOMAIN`, sign in and check worker status. Save provider connections, run a small discovery, inspect the result and generate one draft. Hosting setup alone does not validate provider quotas or generated content quality.
 
-Once the VM is confirmed working, stop the local Mac stack if you do not want two workers consuming the same D1 queue:
+Once the VM is confirmed working, stop the original local stack if you do not want two workers consuming the same D1 queue:
 
 ```sh
 docker compose -f compose.yaml -f compose.d1.yaml down
 ```
 
-Run that last command on the Mac, not the VM. Do not add `-v`.
+Run that last command on the original host, not the new VM. Do not add `-v`.
 
 ## 10. Maintain the deployment
 
@@ -208,4 +208,4 @@ sudo docker compose -f compose.yaml -f compose.d1.yaml up --build -d
 
 For `.env` changes use `up -d --force-recreate` with both Compose files. Back up the private `.env`, the provider-credentials volume and Caddy's certificate state; protect backups as secrets. D1 application data needs a separate D1 export/Time Travel recovery plan. VM snapshots alone do not back up remote D1.
 
-Keep the same checkout directory/Compose project name so the credentials volume remains attached. Do not run `down -v`. Check Oracle usage and keep resources within the free allocation. Provider APIs and domain registration have independent costs. No VM is provisioned merely by following or building these docs.
+Keep the same checkout directory/Compose project name so the credentials volume remains attached. Do not run `down -v`. Check Oracle usage and keep resources within the free allocation. Provider APIs and domain registration have independent costs.

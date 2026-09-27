@@ -8,11 +8,11 @@ The Python API and durable worker need a separate always-on container host with 
 
 Proxy `/api/*` to the external HTTPS backend using a Netlify status-200 rewrite. This keeps browser API requests on the same origin and allows the HttpOnly session cookie. Set `MARGIN_COOKIE_SECURE=true` on the backend, use one API process and test Set-Cookie, logout, CSRF denial and cache isolation through the final proxy. Never put provider keys in frontend build variables. Long generation tasks are queued and polled, rather than holding a proxy request open.
 
-Reference: https://docs.netlify.com/manage/routing/redirects/rewrites-proxies/
+Reference: [Netlify rewrites and proxies](https://docs.netlify.com/manage/routing/redirects/rewrites-proxies/).
 
 ## Single container host
 
-A simpler first deployment is the entire Compose stack on one server with a TLS reverse proxy for the subdomain. The domain can point there even if other pages are hosted on Netlify. This avoids a second proxy layer. Back up the named volume and keep secrets out of images.
+The entire Compose stack can run on one server with a TLS reverse proxy for the subdomain. The [Oracle VM guide](oracle.md) describes this setup step by step. The domain can point there even if other pages are hosted on Netlify. This avoids a second proxy layer. Back up the named volume and keep secrets out of images.
 
 ## Costs
 

@@ -1,21 +1,45 @@
-# Publish the repository
+# GitHub repository management
 
-1. Sign in to [GitHub](https://github.com) and [create a repository](https://github.com/new) named `margin`. Start private if you want to review it before making it public. Leave README, license and gitignore initialization unchecked: this project already contains those files.
-2. Before publishing, revoke any key ever pasted into a tracked/example file. This project previously contained a Resend key in an example; removing a value does not revoke it. Confirm replacement in Resend and update your private configuration.
-3. Review `git status --short`. `.env`, `data/`, databases, virtual environments, dependencies and Docker volumes must stay untracked. Review files before staging. Do not use force push.
-4. Configure Git identity if needed. From the project root, after reviewing files:
+The upstream repository is [anocerino-ai/margin](https://github.com/anocerino-ai/margin). Clone it to run Margin, or create a fork when contributing. GitHub hosts source code, checks and documentation; it does not run the dashboard or Python API.
+
+## Clone or fork
 
 ```sh
-git add .
-git diff --cached --stat
-git commit -m "Initial Margin workspace"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/margin.git
+git clone https://github.com/anocerino-ai/margin.git
+cd margin
+```
+
+To contribute, fork the repository in GitHub first and clone your fork instead. Add the upstream repository as a separate remote so you can pull updates. Work on a branch and open a pull request with the problem, resulting behavior and relevant validation.
+
+## Publish an independent copy
+
+Create an empty repository in your account without generating a README or license. Review `git remote -v` before changing remotes. To retain the existing project history and publish to your own repository:
+
+```sh
+git remote rename origin upstream
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
 git push -u origin main
 ```
 
-Replace the example URL with the exact repository URL. If a remote already exists, inspect it first rather than adding another one. Authenticate with GitHub's supported browser/credential flow or SSH; never put tokens in the remote URL or commands.
+Use an SSH key or GitHub-supported credential manager for authentication. Never put an access token in a remote URL. Before pushing, review `git status --short` and `git diff --cached`; keep `.env`, provider overrides, databases, backups and credentials untracked. Removing a leaked credential from a file does not revoke it: replace it at its provider and inspect repository history.
 
-5. Check the CI workflow. Keep scheduled discovery disabled until remote storage is validated. Add a description, repository topics and a screenshot after reviewing it for personal data. The project includes an MIT license, contribution guide and security policy; enable private vulnerability reporting before public release.
+## Repository settings
 
-Reference: [Adding locally hosted code to GitHub](https://docs.github.com/en/migrations/importing-source-code/using-the-command-line-to-import-source-code/adding-locally-hosted-code-to-github).
+Enable Actions for the supplied workflows and private vulnerability reporting under Security settings. Give the repository a description explaining its editorial purpose. Keep deployment credentials in Actions secrets rather than source files.
+
+The project checks workflow validates application code and documentation. The documentation workflow publishes MkDocs to Pages. The discovery workflow is independently controlled by `MARGIN_SCHEDULE_ENABLED`; publishing documentation does not enable discovery or consume model credits.
+
+## Publish documentation
+
+1. Open Settings → Pages and select **GitHub Actions** as the source.
+2. Under Settings → Secrets and variables → Actions → Variables, set `MARGIN_DOCS_PAGES_ENABLED` to `true`.
+3. Run **Publish documentation** from the Actions tab.
+4. Wait for both build and deploy jobs to succeed, then open the deployment URL.
+
+For your own fork, change `site_url`, `repo_url` and `repo_name` in `mkdocs.yml` to your account and repository. Project Pages normally lives under `https://YOUR_USERNAME.github.io/YOUR_REPOSITORY/`. Do not configure an application subdomain as the documentation domain unless that is intentional.
+
+## Updates
+
+Pull reviewed changes with `git pull --ff-only`. Run project checks before deploying an updated application. Documentation updates publish separately from the running application; a successful Pages deployment does not update Docker containers.
+
+Reference: [GitHub Pages publishing sources](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).

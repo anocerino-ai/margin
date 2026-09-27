@@ -41,7 +41,7 @@ Use Settings for individual connection updates. Model rows are persisted in SQL:
 
 ## Remote persistence
 
-`MARGIN_D1_WORKER_URL` and `MARGIN_D1_WORKER_TOKEN` configure the recommended candidate bridge. The separate direct REST adapter uses `MARGIN_D1_ACCOUNT_ID`, `MARGIN_D1_DATABASE_ID` and `MARGIN_D1_API_TOKEN`. Multi-statement operations in that direct adapter are gated; it is not a substitute for validated bridge transactions.
+`MARGIN_D1_WORKER_URL` and `MARGIN_D1_WORKER_TOKEN` configure the Worker bridge. The separate direct REST adapter uses `MARGIN_D1_ACCOUNT_ID`, `MARGIN_D1_DATABASE_ID` and `MARGIN_D1_API_TOKEN`. Multi-statement operations in that direct adapter are gated; it is not a substitute for validated bridge transactions.
 
 ## Runtime settings in SQL
 

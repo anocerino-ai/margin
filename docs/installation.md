@@ -26,7 +26,7 @@ python3.12 -m venv .venv
 .venv/bin/python scripts/admin.py
 ```
 
-The clone requires repository access while the project is private. Copy the example only on first setup: never overwrite an existing `.env`. The admin command prompts for email and a password of at least 12 characters. See [admin login](admin.md).
+Copy the example only on first setup: never overwrite an existing `.env`. The admin command prompts for email and a password of at least 12 characters. See [admin login](admin.md).
 
 Commands use macOS/Linux paths. On Windows, activate the virtual environment or use its `Scripts` equivalents.
 

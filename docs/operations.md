@@ -4,7 +4,7 @@
 
 | Service | Responsibility | Expected state |
 | --- | --- | --- |
-| init | Apply migrations and seed missing catalog entries | Exited with code 0 |
+| init | Apply migrations and seed SQLite catalogs; check remote schema in the D1 profile | Exited with code 0 |
 | api | HTTP routes, login, validation and queue submission | Healthy |
 | worker | Lease/execute jobs and persist results | Running |
 | web | Serve built Vue files and proxy `/api` | Running |
