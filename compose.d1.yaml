@@ -1,0 +1,12 @@
+# Use with: docker compose -f compose.yaml -f compose.d1.yaml up -d
+services:
+  init:
+    environment:
+      MARGIN_STORAGE: d1_worker
+    command: ["python", "-c", "from margin.config import Settings; from margin.runtime import open_database; db=open_database(Settings()); db.query('SELECT id FROM topics LIMIT 1'); db.close()"]
+  api:
+    environment:
+      MARGIN_STORAGE: d1_worker
+  worker:
+    environment:
+      MARGIN_STORAGE: d1_worker

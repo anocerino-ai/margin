@@ -1,0 +1,13 @@
+{
+  "name": "margin-d1-bridge",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "margin",
+      "database_id": "19746d63-8bcd-44d2-b511-22ba946942eb",
+      "migrations_dir": "../d1-migrations"
+    }
+  ]
+}

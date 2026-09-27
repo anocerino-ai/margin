@@ -1,0 +1,24 @@
+{
+  "name": "margin",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "infra/d1-worker"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/web",
+    "build": "npm run build -w apps/web",
+    "typecheck": "npm run typecheck -w apps/web",
+    "contracts": "openapi-typescript packages/contracts/openapi.json -o packages/contracts/schema.d.ts",
+    "format": "prettier --write apps/web/src",
+    "typecheck:bridge": "npm run typecheck -w @margin/d1-bridge"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.9.9"
+  }
+}

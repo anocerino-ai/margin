@@ -1,0 +1,45 @@
+[
+  {
+    "name": "Stripe Blog",
+    "status": "NO_FEED_ADVERTISED"
+  },
+  {
+    "name": "Discord Engineering",
+    "status": "NO_FEED_ADVERTISED"
+  },
+  {
+    "name": "Meta Engineering",
+    "feed_url": "https://engineering.fb.com/feed/",
+    "status": "VERIFIED",
+    "sample_count": 3
+  },
+  {
+    "name": "Cloudflare Blog",
+    "feed_url": "https://blog.cloudflare.com/rss/",
+    "status": "VERIFIED",
+    "sample_count": 3
+  },
+  {
+    "name": "Netflix TechBlog",
+    "feed_url": "https://netflixtechblog.com/feed",
+    "status": "VERIFIED",
+    "sample_count": 3
+  },
+  {
+    "name": "Slack Engineering",
+    "feed_url": "https://slack.engineering/feed",
+    "status": "VERIFIED",
+    "sample_count": 3
+  },
+  {
+    "name": "Spotify Research",
+    "feed_url": "https://research.atspotify.com/feed",
+    "status": "VERIFIED",
+    "sample_count": 3
+  },
+  {
+    "name": "Uber Engineering",
+    "feed_url": "https://www.uber.com/en-GB/blog/london/engineering/rss/",
+    "status": "RSS_HTTP_404"
+  }
+]

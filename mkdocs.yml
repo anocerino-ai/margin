@@ -1,0 +1,55 @@
+site_name: Margin
+site_description: Self-hosted editorial workspace — installation, operation and development
+repo_url: https://github.com/anocerino-ai/margin
+repo_name: anocerino-ai/margin
+edit_uri: edit/main/docs/
+dev_addr: 127.0.0.1:8001
+strict: true
+theme:
+  name: readthedocs
+  locale: en
+  highlightjs: true
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - tables
+  - fenced_code
+  - toc:
+      permalink: true
+extra_css:
+  - stylesheets/extra.css
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+  links:
+    not_found: warn
+    anchors: warn
+nav:
+  - Overview: index.md
+  - Getting started:
+      - Installation: installation.md
+      - Admin login: admin.md
+      - Provider connections: providers.md
+      - First discovery and draft: user-guide.md
+  - Configuration:
+      - Environment reference: configuration.md
+      - Setup overview: setup.md
+  - Operations:
+      - Docker and backups: operations.md
+      - Troubleshooting: troubleshooting.md
+      - Security: security.md
+  - Hosting and automation:
+      - Deployment options: deployment.md
+      - GitHub repository: github.md
+      - Cloudflare D1: cloudflare.md
+      - D1 validation: d1-validation.md
+      - GitHub Actions: github-actions.md
+  - Development:
+      - Architecture: architecture.md
+      - API reference: api.md
+      - Developer workflow: development.md
+      - Documentation: documentation.md
+      - Verification: verification.md
+      - Components: milestones.md

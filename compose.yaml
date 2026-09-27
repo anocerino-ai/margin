@@ -1,0 +1,44 @@
+x-backend: &backend
+  build: .
+  env_file: .env
+  environment:
+    MARGIN_STORAGE: sqlite
+    MARGIN_SQLITE_PATH: /app/data/margin.db
+    MARGIN_CREDENTIALS_PATH: /app/data/providers.json
+  volumes:
+    - workspace:/app/data
+  restart: unless-stopped
+  init: true
+services:
+  init:
+    <<: *backend
+    command: ["python", "scripts/seed.py"]
+    restart: "no"
+  api:
+    <<: *backend
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  worker:
+    <<: *backend
+    command: ["python", "-m", "margin.jobs.worker"]
+    depends_on:
+      api:
+        condition: service_healthy
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  workspace:

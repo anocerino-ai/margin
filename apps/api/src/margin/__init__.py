@@ -1,0 +1,1 @@
+"""Margin application core."""

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Netflix TechBlog",
+    "website_url": "https://netflixtechblog.com",
+    "feed_url": "https://netflixtechblog.com/feed",
+    "is_active": true
+  },
+  {
+    "name": "Spotify Research",
+    "website_url": "https://research.atspotify.com/blog",
+    "feed_url": "https://research.atspotify.com/feed",
+    "is_active": true
+  },
+  {
+    "name": "Slack Engineering",
+    "website_url": "https://slack.engineering",
+    "feed_url": "https://slack.engineering/feed",
+    "is_active": true
+  },
+  {
+    "name": "Meta Engineering",
+    "website_url": "https://engineering.fb.com",
+    "feed_url": "https://engineering.fb.com/feed/",
+    "is_active": true
+  },
+  {
+    "name": "Cloudflare Blog",
+    "website_url": "https://blog.cloudflare.com",
+    "feed_url": "https://blog.cloudflare.com/rss/",
+    "is_active": true
+  }
+]

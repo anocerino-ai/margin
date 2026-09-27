@@ -1,0 +1,22 @@
+[
+  {
+    "name": "LLM",
+    "description": "Large language models, inference, retrieval augmented generation and evaluation."
+  },
+  {
+    "name": "Recommendation Systems",
+    "description": "Candidate generation, retrieval, ranking, personalization and recommendation infrastructure."
+  },
+  {
+    "name": "System Engineering",
+    "description": "System design, distributed systems, reliability and architecture trade-offs."
+  },
+  {
+    "name": "Cloud Architecture",
+    "description": "Cloud deployment, scaling and infrastructure architecture."
+  },
+  {
+    "name": "On-Prem Architecture",
+    "description": "On-premises infrastructure, self-hosted AI systems and operational trade-offs."
+  }
+]

@@ -1,0 +1,38 @@
+name: Project checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: pip install -r apps/api/requirements.lock
+      - run: pip install --no-deps -e apps/api
+      - run: ruff check --config ruff.toml apps/api scripts
+      - run: pytest apps/api/tests -q
+      - run: npm ci
+      - run: npm run build
+      - run: npm run typecheck:bridge
+      - run: python scripts/export_contracts.py
+      - run: npm run contracts
+      - run: git diff --exit-code -- packages/contracts
+
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-docs.txt
+      - run: mkdocs build --strict

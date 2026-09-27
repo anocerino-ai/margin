@@ -1,0 +1,33 @@
+name: Discovery heartbeat
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: margin-discovery
+  cancel-in-progress: false
+jobs:
+  discovery:
+    if: vars.MARGIN_SCHEDULE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MARGIN_STORAGE: d1_worker
+      MARGIN_D1_WORKER_URL: ${{ vars.MARGIN_D1_WORKER_URL }}
+      MARGIN_D1_WORKER_TOKEN: ${{ secrets.MARGIN_D1_WORKER_TOKEN }}
+      MARGIN_OPENROUTER_API_KEY: ${{ secrets.MARGIN_OPENROUTER_API_KEY }}
+      MARGIN_FIRECRAWL_API_KEY: ${{ secrets.MARGIN_FIRECRAWL_API_KEY }}
+      MARGIN_RESEND_API_KEY: ${{ secrets.MARGIN_RESEND_API_KEY }}
+      MARGIN_EMAIL_FROM: ${{ vars.MARGIN_EMAIL_FROM }}
+      MARGIN_EMAIL_RECIPIENT: ${{ secrets.MARGIN_EMAIL_RECIPIENT }}
+      MARGIN_MAX_NEW_ARTICLES_PER_RUN: '20'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r apps/api/requirements.lock
+      - run: pip install --no-deps -e apps/api
+      - run: python -m margin.jobs.discovery
