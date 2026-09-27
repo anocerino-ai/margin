@@ -261,8 +261,8 @@ def test_provider_safe_diagnostics(db, response, expected, caplog):
     assert "secret partial" not in caplog.text
 
 
-@pytest.mark.parametrize("success_at", [None, 5])
-def test_long_backoff_attempt_history(db, success_at):
+@pytest.mark.parametrize("attempts,success_at", [(3, None), (3, 5), (2, None), (2, 3)])
+def test_long_backoff_attempt_history(db, attempts, success_at):
     for i in range(3):
         db.query("INSERT INTO llm_models VALUES (?,?,?,1)", [str(i), f"model-{i}", i])
     clock = [1000.0]
@@ -281,25 +281,31 @@ def test_long_backoff_attempt_history(db, success_at):
         return httpx.Response(429, headers={"Retry-After": "60"})
 
     provider = RetryingProvider(
-        db, "fake", httpx.Client(transport=httpx.MockTransport(handler)), sleep=sleep, clock=lambda: clock[0]
+        db,
+        "fake",
+        httpx.Client(transport=httpx.MockTransport(handler)),
+        retry_policy=RetryPolicy(attempts),
+        sleep=sleep,
+        clock=lambda: clock[0],
     )
     if success_at:
         provider.generate("p", "c", ClassificationResult, "retry", "CLASSIFICATION")
     else:
         with pytest.raises(ModelsExhausted):
             provider.generate("p", "c", ClassificationResult, "retry", "CLASSIFICATION")
-    expected = success_at or 9
+    expected = success_at or attempts * 3
     assert len(calls) == expected
-    assert [c[0] for c in calls] == [f"model-{i // 3}" for i in range(expected)]
+    assert [c[0] for c in calls] == [f"model-{i // attempts}" for i in range(expected)]
     assert calls[1][1] - calls[0][1] == 60
     assert calls[2][1] - calls[1][1] == 90
-    assert calls[3][1] - calls[2][1] == 180
+    if attempts == 3:
+        assert calls[3][1] - calls[2][1] == 180
     rows = db.query("SELECT attempt_number FROM llm_attempts ORDER BY attempt_number")
     assert [r["attempt_number"] for r in rows] == list(range(1, expected + 1))
     if not success_at:
         with pytest.raises(ModelsExhausted):
             provider.generate("p", "c", ClassificationResult, "retry", "CLASSIFICATION")
-        assert len(calls) == 9  # Recovery cannot replenish an exhausted budget.
+        assert len(calls) == expected  # Recovery cannot replenish an exhausted budget.
 
 
 def test_retry_after_invalid_and_date():

@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     max_new_articles_per_run: int = 20
     context_char_budget: int = 48000
     llm_max_output_tokens: int = 5000
-    llm_attempts_per_model: int = Field(default=3, ge=1, le=10)
+    llm_attempts_per_model: int = Field(default=2, ge=1, le=10)
     llm_retry_initial_seconds: float = Field(default=45, ge=1, le=3600)
     llm_retry_max_seconds: float = Field(default=180, ge=1, le=86400)
 

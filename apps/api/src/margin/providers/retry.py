@@ -8,7 +8,7 @@ from email.utils import parsedate_to_datetime
 
 @dataclass(frozen=True)
 class RetryPolicy:
-    attempts_per_model: int = 3
+    attempts_per_model: int = 2
     initial_delay: float = 45
     max_delay: float = 180
 

@@ -51,6 +51,6 @@ Docker Compose explicitly pins SQLite. Editing only `.env` does not override an 
 
 ## LLM retry policy
 
-`MARGIN_LLM_ATTEMPTS_PER_MODEL` defaults to 3 total calls per model (including the initial call). `MARGIN_LLM_RETRY_INITIAL_SECONDS` defaults to 45; `MARGIN_LLM_RETRY_MAX_SECONDS` defaults to 180. Delays grow exponentially, and a longer valid Retry-After header takes precedence over the configured cap. All failed attempts, including invalid output, consume the model budget. Successful responses stop the sequence immediately.
+`MARGIN_LLM_ATTEMPTS_PER_MODEL` defaults to 2 total calls per model (including the initial call). `MARGIN_LLM_RETRY_INITIAL_SECONDS` defaults to 45; `MARGIN_LLM_RETRY_MAX_SECONDS` defaults to 180. Delays grow exponentially, and a longer valid Retry-After header takes precedence over the configured cap. All failed attempts, including invalid output, consume the model budget. Successful responses stop the sequence immediately.
 
 Recreate API and worker containers after changing environment settings. Calls within a job are sequential. A cooldown for HTTP 429 is persisted in the shared database, including after the last failed model, so the next article does not immediately retry a rate-limited provider. This does not serialize independently deployed workers; operate one worker deployment when sharing provider quotas. Long waits can make a 20-article run take hours. GitHub Actions has a 30-minute workflow limit; use the continuous Docker worker for large runs with long retry delays.
