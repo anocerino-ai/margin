@@ -14,6 +14,10 @@ def article_view(db, row):
             "SELECT * FROM classification_topics WHERE classification_id=? ORDER BY topic_type,position",
             [matches[0]["id"]],
         )
+        item["classification"]["attempts"] = db.query(
+            "SELECT model,attempt_number,status,error_code,started_at,completed_at FROM llm_attempts WHERE operation_type='CLASSIFICATION' AND operation_id=? ORDER BY attempt_number",
+            [matches[0]["id"]],
+        )
     return item
 
 

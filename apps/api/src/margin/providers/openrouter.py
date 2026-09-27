@@ -1,5 +1,7 @@
 """Bounded fallback with persisted circular cursor and per-attempt audit."""
 
+import logging
+
 import httpx
 from pydantic import ValidationError
 
@@ -59,15 +61,43 @@ class OpenRouterProvider:
                     },
                 )
                 response.raise_for_status()
-                result = schema.model_validate_json(response.json()["choices"][0]["message"]["content"])
+                body = response.json()
+                choice = body["choices"][0]
+                if choice.get("finish_reason") == "length":
+                    raise ValueError("OUTPUT_TRUNCATED")
+                if choice.get("finish_reason") == "content_filter":
+                    raise ValueError("CONTENT_FILTERED")
+                content = choice["message"]["content"]
+                if not content:
+                    raise ValueError("EMPTY_OUTPUT")
+                result = schema.model_validate_json(content)
                 if validate:
                     validate(result)
             except httpx.TimeoutException:
                 status, error = "TIMEOUT", "PROVIDER_TIMEOUT"
+            except httpx.HTTPStatusError as exc:
+                status, error = "HTTP_ERROR", f"PROVIDER_HTTP_{exc.response.status_code}"
             except httpx.HTTPError:
-                status, error = "HTTP_ERROR", "PROVIDER_HTTP_ERROR"
-            except (ValidationError, ValueError, KeyError, IndexError, TypeError):
-                status, error, result = "INVALID_OUTPUT", "SCHEMA_VALIDATION_FAILED", None
+                status, error = "HTTP_ERROR", "PROVIDER_NETWORK_ERROR"
+            except ValidationError as exc:
+                # Only schema error categories are retained; never output values or provider bodies.
+                kinds = sorted({e["type"] for e in exc.errors(include_input=False, include_url=False)})
+                status, error, result = (
+                    "INVALID_OUTPUT",
+                    "SCHEMA_VALIDATION_FAILED:" + ",".join(kinds)[:160],
+                    None,
+                )
+            except ValueError as exc:
+                safe_codes = {
+                    "OUTPUT_TRUNCATED",
+                    "CONTENT_FILTERED",
+                    "EMPTY_OUTPUT",
+                    "TOPIC_SNAPSHOT_MISMATCH",
+                }
+                error = str(exc) if str(exc) in safe_codes else "INVALID_RESPONSE_JSON"
+                status, result = "INVALID_OUTPUT", None
+            except (KeyError, IndexError, TypeError):
+                status, error, result = "INVALID_OUTPUT", "INVALID_RESPONSE_STRUCTURE", None
             self.db.query(
                 "INSERT INTO llm_attempts VALUES (?,?,?,?,?,?,?,?,?,?)",
                 [
@@ -83,6 +113,15 @@ class OpenRouterProvider:
                     error,
                 ],
             )
+            if error:
+                logging.getLogger(__name__).warning(
+                    "LLM attempt failed operation=%s type=%s attempt=%s model=%s code=%s",
+                    operation_id,
+                    operation_type,
+                    previous + offset + 1,
+                    model,
+                    error,
+                )
             if result is not None:
                 return result
         raise ModelsExhausted("ALL_MODELS_FAILED")

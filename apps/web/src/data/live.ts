@@ -60,6 +60,7 @@ export interface Article {
     model_used: string | null
     prompt_version: string
     prompt_hash: string
+    attempts?: { model: string; attempt_number: number; status: string; error_code: string | null; started_at: string; completed_at: string }[]
     topics: Match[]
   } | null
 }

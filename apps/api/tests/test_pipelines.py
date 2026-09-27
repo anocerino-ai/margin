@@ -215,3 +215,63 @@ def test_rss_parse_and_normalization():
         public_addresses("http://127.0.0.1")
     with pytest.raises(FetchError):
         RSSProvider(lambda url: b"<!DOCTYPE x><rss/>").entries("https://example.org")
+
+
+@pytest.mark.parametrize(
+    "sizes,expected",
+    [
+        ([20, 20, 20, 20, 20], [4, 4, 4, 4, 4]),
+        ([1, 20, 20, 20, 20], [1, 5, 5, 5, 4]),
+        ([0, 0, 2, 3, 1], [0, 0, 2, 3, 1]),
+    ],
+)
+def test_balanced_selection(sizes, expected):
+    from collections import Counter
+
+    from margin.services.selection import balanced_entries
+
+    counts = Counter(
+        source for source, _ in balanced_entries([(i, list(range(n))) for i, n in enumerate(sizes)], 20)
+    )
+    assert [counts[i] for i in range(5)] == expected
+
+
+def test_discovery_balances_sources_and_resumes(setup):
+    db, repo, settings, original = setup
+    sources = [original]
+    for i in range(4):
+        sources.append(
+            repo.create_catalog(
+                "rss_sources",
+                {
+                    "name": f"Source {i}",
+                    "feed_url": f"https://example.org/feed/{i}",
+                    "website_url": "https://example.org",
+                    "is_active": True,
+                },
+            )
+        )
+
+    class ManyRSS:
+        def entries(self, url, limit):
+            return [{"title": "LLM architecture", "url": f"{url}/article/{i}"} for i in range(limit)]
+
+    p = pipeline(db, settings)
+    p.rss = ManyRSS()
+    run = DiscoveryService(repo).request()
+    classify = p.classify
+
+    def interrupt(*args):
+        raise RuntimeError("interrupted")
+
+    p.classify = interrupt
+    with pytest.raises(RuntimeError, match="interrupted"):
+        p.discovery(run["id"])
+    assert db.query("SELECT COUNT(*) n FROM article_classifications WHERE status='PENDING'")[0]["n"] == 20
+    p.classify = classify
+    p.discovery(run["id"])
+    assert [r["n"] for r in db.query("SELECT source_id,COUNT(*) n FROM articles GROUP BY source_id")] == [
+        4
+    ] * 5
+    assert repo.get("classification_runs", run["id"])["classified_count"] == 20
+    assert db.query("SELECT COUNT(*) n FROM source_fetches")[0]["n"] == 5

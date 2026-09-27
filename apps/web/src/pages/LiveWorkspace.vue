@@ -454,7 +454,7 @@ onUnmounted(() => {
           <RouterLink to="/articles" class="button primary">Explore articles ↗</RouterLink>
         </div>
         <aside class="edition">
-          <p class="eyebrow">WORKSPACE LIVE</p>
+          <p class="eyebrow">TODAY</p>
           <strong
             >{{ new Date().getDate() }}<span> / {{ new Date().getMonth() + 1 }}</span></strong
           >
@@ -597,6 +597,13 @@ onUnmounted(() => {
               >
             </div>
             <p class="muted">{{ article.classification?.status || 'Not classified' }}</p>
+            <details v-if="article.classification?.attempts?.length" style="margin: 20px 0">
+              <summary>Classification attempts</summary>
+              <p v-for="attempt in article.classification.attempts" :key="attempt.attempt_number" class="caption-note">
+                #{{ attempt.attempt_number }} · {{ attempt.model }} · {{ attempt.status }}
+                <br />{{ attempt.error_code || 'Valid response' }} · {{ date(attempt.started_at) }}
+              </p>
+            </details>
             <button class="primary" @click="startGeneration">Generate from this source</button
             ><button :disabled="busy" @click="retryArticle">Reclassify</button>
           </section>

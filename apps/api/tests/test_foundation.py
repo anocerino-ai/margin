@@ -218,3 +218,38 @@ def test_scheduler_timezone_and_dst():
 def test_production_requires_auth():
     with pytest.raises(ValidationError):
         Settings(env="production", api_token="")
+
+
+@pytest.mark.parametrize(
+    "response,expected",
+    [
+        (httpx.Response(429), "PROVIDER_HTTP_429"),
+        (httpx.Response(404), "PROVIDER_HTTP_404"),
+        (
+            httpx.Response(
+                200, json={"choices": [{"finish_reason": "length", "message": {"content": "secret partial"}}]}
+            ),
+            "OUTPUT_TRUNCATED",
+        ),
+        (
+            httpx.Response(200, json={"choices": [{"message": {"content": "private invalid json"}}]}),
+            "SCHEMA_VALIDATION_FAILED:json_invalid",
+        ),
+        (httpx.Response(200, json={"choices": []}), "INVALID_RESPONSE_STRUCTURE"),
+        (httpx.Response(200, json={"choices": [{"message": {"content": ""}}]}), "EMPTY_OUTPUT"),
+    ],
+)
+def test_provider_safe_diagnostics(db, response, expected, caplog):
+    db.query("INSERT INTO llm_models VALUES ('a','model-a',0,1)")
+    provider = OpenRouterProvider(
+        db, "secret-token", httpx.Client(transport=httpx.MockTransport(lambda r: response))
+    )
+    with pytest.raises(ModelsExhausted):
+        provider.generate(
+            "private prompt", "private context", ClassificationResult, "diagnostic", "CLASSIFICATION"
+        )
+    assert db.query("SELECT error_code FROM llm_attempts")[0]["error_code"] == expected
+    assert expected in caplog.text
+    assert "secret-token" not in caplog.text
+    assert "private" not in caplog.text
+    assert "secret partial" not in caplog.text

@@ -3,8 +3,10 @@
 import hashlib
 import html
 import json
+import logging
 from datetime import UTC, datetime, timedelta
 
+from margin.providers.openrouter import ModelsExhausted
 from margin.repositories.core import Repository, identifier, now
 from margin.runtime import runtime_settings
 from margin.schemas.contracts import ClassificationResult, ContentResult
@@ -82,13 +84,24 @@ class Pipelines:
                 "CLASSIFICATION",
                 validate=validate,
             )
-        except Exception:
+        except Exception as exc:
+            error = (
+                "CLASSIFICATION_FAILED"
+                if isinstance(exc, ModelsExhausted)
+                else "CLASSIFICATION_INTERNAL_ERROR"
+            )
+            logging.getLogger(__name__).warning(
+                "Classification failed operation=%s code=%s exception_type=%s",
+                id,
+                error,
+                type(exc).__name__,
+            )
             # Errors remain failures, never converted to a non-target result.
             self.db.query(
-                "UPDATE article_classifications SET status='FAILED',error_code='CLASSIFICATION_FAILED',completed_at=? WHERE id=?",
-                [now(), id],
+                "UPDATE article_classifications SET status='FAILED',error_code=?,completed_at=? WHERE id=?",
+                [error, now(), id],
             )
-            self.event(run["id"], "DISCOVERY", "CLASSIFICATION", "FAILED", "CLASSIFICATION_FAILED")
+            self.event(run["id"], "DISCOVERY", "CLASSIFICATION", "FAILED", error)
             return
         target = [m for m in result.target_topics if m.confidence >= run["threshold"]]
         statements = [
@@ -129,71 +142,44 @@ class Pipelines:
             sources = self.db.query("SELECT * FROM rss_sources WHERE is_active=1")
             if not sources:
                 raise PipelineFailure("NO_ACTIVE_SOURCES")
-            for source in sources:
-                fetch = self.db.query(
-                    "SELECT * FROM source_fetches WHERE run_id=? AND source_id=?", [run_id, source["id"]]
-                )
-                if fetch:
+            # Plan one article per source per round before executing any LLM calls.
+            # Commit the selection and fetch ledger together so interruption cannot skew quotas.
+            candidates = []
+            statements = []
+            seen = set()
+            for source in sorted(sources, key=lambda item: item["id"]):
+                if self.db.query(
+                    "SELECT id FROM source_fetches WHERE run_id=? AND source_id=?",
+                    [run_id, source["id"]],
+                ):
                     continue
                 try:
                     entries = self.rss.entries(source["feed_url"], self.settings.max_articles_per_feed)
                 except Exception:
-                    self.db.query(
-                        "INSERT INTO source_fetches VALUES (?,?,?,'FAILED',0,'RSS_FETCH_FAILED')",
-                        [identifier(), run_id, source["id"]],
+                    statements.append(
+                        (
+                            "INSERT INTO source_fetches VALUES (?,?,?,'FAILED',0,'RSS_FETCH_FAILED')",
+                            [identifier(), run_id, source["id"]],
+                        )
                     )
-                    self.event(run_id, "DISCOVERY", "RSS", "FAILED", "RSS_FETCH_FAILED")
+                    statements.append(
+                        (
+                            "INSERT INTO run_events VALUES (?,?,NULL,'RSS','FAILED','RSS_FETCH_FAILED',?)",
+                            [identifier(), run_id, now()],
+                        )
+                    )
                     continue
-                known, new = 0, 0
+                fresh, known = [], 0
                 for entry in entries:
-                    article = self.db.query("SELECT * FROM articles WHERE normalized_url=?", [entry["url"]])
-                    if not article:
-                        count = self.db.query(
-                            "SELECT COUNT(*) n FROM article_classifications WHERE run_id=?", [run_id]
-                        )[0]["n"]
-                        if count >= self.settings.max_new_articles_per_run:
-                            continue
-                        stamp = now()
-                        id = identifier()
-                        # Persist article + pending classification together, allowing interrupted discovery to resume.
-                        _, digest = load_prompt("classification")
-                        self.db.batch(
-                            [
-                                (
-                                    "INSERT OR IGNORE INTO articles VALUES (?,?,?,?,?,?,?,?,?,?)",
-                                    [
-                                        id,
-                                        source["id"],
-                                        entry["title"],
-                                        entry["url"],
-                                        entry["url"],
-                                        entry.get("rss_guid"),
-                                        entry.get("published_at"),
-                                        stamp,
-                                        stamp,
-                                        stamp,
-                                    ],
-                                ),
-                                (
-                                    "INSERT OR IGNORE INTO article_classifications(id,article_id,run_id,status,prompt_version,prompt_hash,created_at) SELECT ?,id,?,'PENDING','v1',?,? FROM articles WHERE normalized_url=?",
-                                    [identifier(), run_id, digest, stamp, entry["url"]],
-                                ),
-                            ]
-                        )
-                        new += 1
-                        article = self.db.query(
-                            "SELECT * FROM articles WHERE normalized_url=?", [entry["url"]]
-                        )
-                    else:
-                        pending = self.db.query(
-                            "SELECT id FROM article_classifications WHERE article_id=? AND run_id=?",
-                            [article[0]["id"], run_id],
-                        )
-                        if not pending:
-                            known += 1
-                            continue
-                    self.classify(article[0], run, topics)
-                self.db.batch(
+                    if entry["url"] in seen or self.db.query(
+                        "SELECT id FROM articles WHERE normalized_url=?", [entry["url"]]
+                    ):
+                        known += 1
+                        continue
+                    seen.add(entry["url"])
+                    fresh.append(entry)
+                candidates.append((source, fresh))
+                statements.extend(
                     [
                         (
                             "INSERT INTO source_fetches VALUES (?,?,?,'SUCCESS',?,NULL)",
@@ -205,6 +191,41 @@ class Pipelines:
                         ),
                     ]
                 )
+            count = self.db.query("SELECT COUNT(*) n FROM article_classifications WHERE run_id=?", [run_id])[
+                0
+            ]["n"]
+            _, digest = load_prompt("classification")
+            from margin.services.selection import balanced_entries
+
+            for source, entry in balanced_entries(
+                candidates, max(0, self.settings.max_new_articles_per_run - count)
+            ):
+                stamp, article_id = now(), identifier()
+                statements.extend(
+                    [
+                        (
+                            "INSERT OR IGNORE INTO articles VALUES (?,?,?,?,?,?,?,?,?,?)",
+                            [
+                                article_id,
+                                source["id"],
+                                entry["title"],
+                                entry["url"],
+                                entry["url"],
+                                entry.get("rss_guid"),
+                                entry.get("published_at"),
+                                stamp,
+                                stamp,
+                                stamp,
+                            ],
+                        ),
+                        (
+                            "INSERT OR IGNORE INTO article_classifications(id,article_id,run_id,status,prompt_version,prompt_hash,created_at) SELECT ?,id,?,'PENDING','v1',?,? FROM articles WHERE normalized_url=?",
+                            [identifier(), run_id, digest, stamp, entry["url"]],
+                        ),
+                    ]
+                )
+            if statements:
+                self.db.batch(statements)
         # Recover entries persisted before a worker interruption even if the feed has changed.
         for row in self.db.query(
             "SELECT a.* FROM articles a JOIN article_classifications c ON c.article_id=a.id WHERE c.run_id=? AND c.status IN ('PENDING','CLASSIFYING')",
@@ -254,9 +275,7 @@ class Pipelines:
                 [run_id],
             )
             body = (
-                "<h1>Margin — Engineering digest</h1><p>"
-                + str(len(articles))
-                + " articles analyzed.</p><ul>"
+                "<h1>Margin — Engineering digest</h1><p>" + str(len(articles)) + " articles analyzed.</p><ul>"
             )
             for a in articles:
                 label = "Target" if a["is_target"] else "Failed" if a["status"] == "FAILED" else "Non-target"

@@ -35,3 +35,11 @@ Approval marks a version as reviewed. It does not publish to LinkedIn or a blog.
 ## Scheduling
 
 Settings store a daily or weekly schedule and timezone. Automatic wakeups require the remote [GitHub Actions setup](github-actions.md). A local worker alone processes queued jobs; it does not create scheduled discovery jobs. Manual discovery remains available independently.
+
+## Discovery selection and diagnostics
+
+Discovery selects new articles in rounds across active sources, preserving feed order within each source. With five sources that each have enough new entries, a limit of 20 selects four per source. Empty, failed or exhausted feeds release their slots to the remaining sources. Known URLs and duplicates do not consume the new-article budget. The per-feed fetch limit still bounds the candidates available for selection; a run may finish below its overall limit.
+
+Open an article and expand **Classification attempts** to inspect model, attempt number, status and error code. New attempts distinguish HTTP status codes (such as `PROVIDER_HTTP_429`), network failures, timeouts, truncated or empty output, invalid response structure, schema error categories and topic mismatches. Provider response bodies, credentials and source content are not included in diagnostics. Older attempts retain their original generic codes.
+
+The provider makes one attempt per enabled model, rotating the starting model and falling back on failure. Retries with backoff are not part of this behavior. New diagnostics also appear in worker logs. After updating the application, rebuild the containers and refresh the browser to use the matching frontend and backend.
