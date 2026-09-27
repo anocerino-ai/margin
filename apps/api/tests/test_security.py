@@ -67,3 +67,13 @@ def test_generation_prompts_default_to_english():
         assert "English" in current and "Italian" not in current
         assert digest != old_digest
         assert "Italian" in legacy
+
+
+def test_frontend_mutation_header_matches_backend():
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3]
+    client = (root / "apps/web/src/data/live.ts").read_text()
+    match = re.search(r'[\'"]X-Requested-With[\'"]\s*:\s*[\'"]([^\'"]+)', client)
+    assert match and match.group(1) == "Margin"

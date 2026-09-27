@@ -12,7 +12,7 @@ export async function api<T>(path: string, method = 'GET', body?: unknown): Prom
   const response = await fetch('/api/v1' + path, {
     method,
     headers: {
-      "X-Requested-With": "AI-Genius",
+      "X-Requested-With": "Margin",
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
       ...(apiToken.value ? { Authorization: 'Bearer ' + apiToken.value } : {}),
     },
