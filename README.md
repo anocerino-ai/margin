@@ -162,4 +162,4 @@ python3.12 -m venv .venv-docs
 .venv-docs/bin/mkdocs serve
 ```
 
-Open http://127.0.0.1:8001. Build with `.venv-docs/bin/mkdocs build --strict`; CI validates documentation on pushes and pull requests. This does not publish a public site. See [documentation development](docs/documentation.md).
+Open http://127.0.0.1:8001. Build with `.venv-docs/bin/mkdocs build --strict`; CI validates documentation on pushes and pull requests. The Publish documentation workflow deploys the generated site to GitHub Pages when Pages is enabled for the repository. See [documentation development](docs/documentation.md).
