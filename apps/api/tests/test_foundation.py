@@ -10,11 +10,17 @@ from pydantic import ValidationError
 from margin.api.app import create_app
 from margin.config import ROOT, Settings
 from margin.jobs.discovery import due_slot
-from margin.providers.openrouter import ModelsExhausted, OpenRouterProvider
+from margin.providers.openrouter import ModelsExhausted
+from margin.providers.openrouter import OpenRouterProvider as RetryingProvider
+from margin.providers.retry import RetryPolicy
 from margin.repositories.core import Repository, now
 from margin.repositories.database import D1Database, SQLiteDatabase
 from margin.schemas.contracts import ClassificationResult, GenerationCreate
 from margin.services.foundation import DiscoveryService, GenerationService
+
+
+def OpenRouterProvider(*args, **kwargs):
+    return RetryingProvider(*args, retry_policy=RetryPolicy(1, 0, 0), **kwargs)
 
 
 @pytest.fixture
@@ -253,3 +259,56 @@ def test_provider_safe_diagnostics(db, response, expected, caplog):
     assert "secret-token" not in caplog.text
     assert "private" not in caplog.text
     assert "secret partial" not in caplog.text
+
+
+@pytest.mark.parametrize("success_at", [None, 5])
+def test_long_backoff_attempt_history(db, success_at):
+    for i in range(3):
+        db.query("INSERT INTO llm_models VALUES (?,?,?,1)", [str(i), f"model-{i}", i])
+    clock = [1000.0]
+    calls = []
+
+    def sleep(seconds):
+        clock[0] += seconds
+
+    def handler(request):
+        calls.append((json.loads(request.content)["model"], clock[0]))
+        if len(calls) == success_at:
+            return httpx.Response(
+                200,
+                json={"choices": [{"message": {"content": '{"target_topics":[],"non_target_topics":[]}'}}]},
+            )
+        return httpx.Response(429, headers={"Retry-After": "60"})
+
+    provider = RetryingProvider(
+        db, "fake", httpx.Client(transport=httpx.MockTransport(handler)), sleep=sleep, clock=lambda: clock[0]
+    )
+    if success_at:
+        provider.generate("p", "c", ClassificationResult, "retry", "CLASSIFICATION")
+    else:
+        with pytest.raises(ModelsExhausted):
+            provider.generate("p", "c", ClassificationResult, "retry", "CLASSIFICATION")
+    expected = success_at or 9
+    assert len(calls) == expected
+    assert [c[0] for c in calls] == [f"model-{i // 3}" for i in range(expected)]
+    assert calls[1][1] - calls[0][1] == 60
+    assert calls[2][1] - calls[1][1] == 90
+    assert calls[3][1] - calls[2][1] == 180
+    rows = db.query("SELECT attempt_number FROM llm_attempts ORDER BY attempt_number")
+    assert [r["attempt_number"] for r in rows] == list(range(1, expected + 1))
+    if not success_at:
+        with pytest.raises(ModelsExhausted):
+            provider.generate("p", "c", ClassificationResult, "retry", "CLASSIFICATION")
+        assert len(calls) == 9  # Recovery cannot replenish an exhausted budget.
+
+
+def test_retry_after_invalid_and_date():
+    from datetime import UTC, datetime, timedelta
+    from email.utils import format_datetime
+
+    policy = RetryPolicy()
+    assert policy.delay(1, "nonsense") == 45
+    assert policy.delay(2) == 90
+    assert policy.delay(1, "nan") == 45
+    future = format_datetime(datetime.now(UTC) + timedelta(seconds=240))
+    assert policy.delay(1, future) > 238

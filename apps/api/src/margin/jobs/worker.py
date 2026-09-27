@@ -10,6 +10,7 @@ from margin.config import Settings
 from margin.providers.email import ResendProvider
 from margin.providers.firecrawl import FirecrawlProvider
 from margin.providers.openrouter import OpenRouterProvider
+from margin.providers.retry import RetryPolicy
 from margin.providers.rss import RSSProvider
 from margin.repositories.core import identifier, now
 from margin.runtime import open_database
@@ -52,6 +53,11 @@ class Worker:
                 db,
                 self.settings.openrouter_api_key.get_secret_value(),
                 max_output_tokens=self.settings.llm_max_output_tokens,
+                retry_policy=RetryPolicy(
+                    self.settings.llm_attempts_per_model,
+                    self.settings.llm_retry_initial_seconds,
+                    self.settings.llm_retry_max_seconds,
+                ),
             ),
             RSSProvider(),
             FirecrawlProvider(self.settings.firecrawl_api_key.get_secret_value()),
