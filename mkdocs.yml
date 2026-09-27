@@ -43,6 +43,7 @@ nav:
       - Security: security.md
   - Hosting and automation:
       - Deployment options: deployment.md
+      - Oracle Always Free VM: oracle.md
       - GitHub repository: github.md
       - Cloudflare D1: cloudflare.md
       - D1 validation: d1-validation.md
