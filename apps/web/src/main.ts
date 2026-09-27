@@ -7,6 +7,7 @@ import LiveWorkspace from './pages/LiveWorkspace.vue'
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
+    { path: '/login', component: { render: () => null } },
     { path: '/', component: LiveWorkspace },
     { path: '/articles/:id?', component: LiveWorkspace },
     { path: '/discovery/:id?', component: LiveWorkspace },

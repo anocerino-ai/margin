@@ -1,5 +1,12 @@
 import { ref } from 'vue'
 export const apiToken = ref('')
+export const sessionExpired = ref(false)
+let sessionRevision = 0
+export function resetSession() {
+  sessionRevision += 1
+  sessionExpired.value = false
+  apiToken.value = ''
+}
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -9,6 +16,7 @@ export class ApiError extends Error {
   }
 }
 export async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+  const revision = sessionRevision
   const response = await fetch('/api/v1' + path, {
     method,
     headers: {
@@ -18,6 +26,10 @@ export async function api<T>(path: string, method = 'GET', body?: unknown): Prom
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
+  if (response.status === 401 && revision === sessionRevision) {
+    apiToken.value = ''
+    sessionExpired.value = true
+  }
   if (!response.ok) {
     let message = 'API unavailable'
     try {

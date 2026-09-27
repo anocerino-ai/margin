@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { sessionExpired, resetSession } from './data/live'
+const router = useRouter()
+watch(sessionExpired, (expired) => {
+  if (!expired) return
+  authenticated.value = false
+  password.value = ''
+  loginError.value = 'Your session has expired. Please sign in again.'
+  void router.replace('/login')
+})
 const authenticated = ref(false),
   checked = ref(false),
   configured = ref(true)
@@ -13,6 +23,8 @@ onMounted(async () => {
     const data = await r.json()
     authenticated.value = data.authenticated
     configured.value = data.configured
+    if (!data.authenticated) void router.replace('/login')
+    else if (router.currentRoute.value.path === '/login') void router.replace('/')
   } catch {
     loginError.value = 'Backend unavailable'
   } finally {
@@ -29,7 +41,9 @@ async function login() {
       body: JSON.stringify({ email: email.value, password: password.value }),
     })
     if (!r.ok) throw new Error('Login failed. Check your credentials or try again in a minute.')
+    resetSession()
     authenticated.value = true
+    await router.replace('/')
     password.value = ''
   } catch (e) {
     loginError.value = String(e)
@@ -39,7 +53,10 @@ async function login() {
 }
 async function logout() {
   await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-Requested-With': 'Margin' } })
+  resetSession()
   authenticated.value = false
+  loginError.value = ''
+  await router.replace('/login')
 }
 const links = [
   ['/', 'Overview'],

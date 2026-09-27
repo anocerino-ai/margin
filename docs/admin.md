@@ -33,3 +33,7 @@ Sessions are held in API memory and expire after 12 hours. Login creates an Http
 Ten login attempts within a minute trigger throttling. This limit is process-wide, not per-account or per-client. Mutating workspace requests also require the application's custom request header. Use HTTPS and `MARGIN_COOKIE_SECURE=true` for remote access.
 
 The health and auth-status endpoints remain accessible without a session. Workspace data and settings require login. See [security](security.md) for deployment boundaries.
+
+## Session expiry in the browser
+
+When a workspace request returns HTTP 401, the application closes the workspace and opens the login page with a session-expired message. This applies to page loads, polling and save actions. Sign in again to return to Overview. Unsaved edits are not submitted again automatically. Network errors and HTTP 403 responses do not trigger this redirect.
