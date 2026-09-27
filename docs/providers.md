@@ -43,3 +43,15 @@ Discovery selects new articles in rounds across active sources, preserving feed 
 Open an article and expand **Classification attempts** to inspect model, attempt number, status and error code. New attempts distinguish HTTP status codes (such as `PROVIDER_HTTP_429`), network failures, timeouts, truncated or empty output, invalid response structure, schema error categories and topic mismatches. Provider response bodies, credentials and source content are not included in diagnostics. Older attempts retain their original generic codes.
 
 The provider makes up to two sequential attempts per enabled model, rotating the starting model and falling back only after its attempt budget is exhausted. The default wait is 45 seconds before the second attempt; after the second failure, a 90-second cooldown precedes another model. A longer provider Retry-After is respected. Success stops further attempts; three failing models produce six recorded calls. A persisted 429 cooldown also delays subsequent operations sharing the database. The worker renews its lease during waits. These waits reduce request pressure but cannot override daily quotas or guarantee success. New diagnostics also appear in worker logs. After updating the application, rebuild the containers and refresh the browser to use the matching frontend and backend.
+
+## Automatic resumption after a quota pause
+
+In **Settings**, **Automatically resume queued work after the daily quota resets** is enabled by default. Save runtime settings after changing it. This setting is stored in SQL and applies to workers without restarting containers.
+
+When enabled, queued work resumes after the displayed quota reset time, provided the worker is running. When disabled, quota-paused work remains held even after that time. Enable the option and save to release the hold once the reset time has passed. Turning it on early does not bypass the quota. Turning it off does not cancel a running request or disable ordinary discovery scheduling; it controls resumption after quota exhaustion.
+
+The existing job continues from saved progress. Completed classifications and generated versions are preserved. This is not a fresh discovery of every feed and does not automatically retry old terminal failures. The dashboard explains whether resumption is automatic or disabled. The built-in worker handles resumption; no Codex automation is required.
+
+## Qwen model identifier
+
+The free Qwen model identifier used for this setup is `qwen/qwen3.8-27b:free`. Enter the full identifier, including `:free`, in the model catalog. Model availability and quotas are controlled by OpenRouter; adding a model does not give it an independent daily allowance.

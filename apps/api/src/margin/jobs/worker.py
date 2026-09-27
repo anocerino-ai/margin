@@ -82,6 +82,11 @@ class Worker:
         self.heartbeat()
         if paused(self.db):
             return []
+        # Once a hold has been released, disabling auto-resume must not revive it.
+        self.db.query(
+            "DELETE FROM app_settings WHERE key='llm.quota_pause' AND CAST(json_extract(value,'$.until') AS REAL)<=?",
+            [time.time()],
+        )
         return self.db.query(
             """UPDATE job_outbox SET status='RUNNING',owner=?,lease_until=?,attempts=attempts+1
         WHERE id=(SELECT id FROM job_outbox WHERE status='PENDING' OR (status='RUNNING' AND julianday(lease_until)<julianday('now')) ORDER BY created_at LIMIT 1)

@@ -64,3 +64,11 @@ Every outgoing model call reserves a slot atomically in the shared database, inc
 At the local daily budget, jobs return to the queue without losing articles or completed versions. An explicit OpenRouter `free-models-per-day` rejection also pauses processing. The dashboard shows the pause and resume time. The continuous worker resumes after the next UTC midnight (plus five seconds), or later if Retry-After requires it. This is the application's reset policy; if the provider is still exhausted, its next rejection defers work again. No separate discovery run is created. Daily-quota rejections are audited but do not exhaust the model's retry allowance.
 
 Provider-reported daily exhaustion pauses the whole model queue. Configure and save limits before starting work. The worker must be running for automatic resumption; GitHub Actions resumes only at its next workflow execution. Existing classifications already marked failed are not automatically retried. Persistent counters survive container restarts. Raising a limit during a pause takes effect after the displayed resume time.
+
+## Automatic resumption after a quota pause
+
+In **Settings**, **Automatically resume queued work after the daily quota resets** is enabled by default. Save runtime settings after changing it. This setting is stored in SQL and applies to workers without restarting containers.
+
+When enabled, queued work resumes after the displayed quota reset time, provided the worker is running. When disabled, quota-paused work remains held even after that time. Enable the option and save to release the hold once the reset time has passed. Turning it on early does not bypass the quota. Turning it off does not cancel a running request or disable ordinary discovery scheduling; it controls resumption after quota exhaustion.
+
+The existing job continues from saved progress. Completed classifications and generated versions are preserved. This is not a fresh discovery of every feed and does not automatically retry old terminal failures. The dashboard explains whether resumption is automatic or disabled. The built-in worker handles resumption; no Codex automation is required.

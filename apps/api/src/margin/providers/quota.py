@@ -19,7 +19,13 @@ def pause_until(db, until, reason):
 def paused(db, clock=time.time):
     rows = db.query("SELECT value FROM app_settings WHERE key='llm.quota_pause'")
     state = json.loads(rows[0]["value"]) if rows else {}
-    return state if state.get("until", 0) > clock() else None
+    if not state:
+        return None
+    from margin.runtime import runtime_settings
+
+    auto_resume = runtime_settings(db).openrouter_auto_resume
+    state["auto_resume"] = auto_resume
+    return state if state.get("until", 0) > clock() or not auto_resume else None
 
 
 class RequestQuota:

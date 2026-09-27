@@ -7,7 +7,8 @@ Discover engineering articles, classify them by topic, and turn selected sources
 ## Features
 
 - RSS discovery and title-only classification, with deduplication and source-level failure tracking.
-- Configurable OpenRouter model rotation and fallback.
+- Configurable OpenRouter model rotation, sequential retries and shared RPM/daily request budgets.
+- Persistent quota pauses with next-day resumption, enabled by default and switchable in Settings.
 - Firecrawl extraction only during content generation.
 - Versioned Markdown prompts, immutable output history and source provenance.
 - Single-admin login, no public registration, and individual provider settings.

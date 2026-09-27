@@ -54,3 +54,11 @@ docker compose -f compose.yaml -f compose.d1.yaml ps
 ```
 
 D1 contains the application records; the Docker volume still holds local provider overrides. Back up remote records using Cloudflare D1 export/Time Travel, and protect the local credentials volume separately. Default Compose without the override selects local SQLite.
+
+## Automatic resumption after a quota pause
+
+In **Settings**, **Automatically resume queued work after the daily quota resets** is enabled by default. Save runtime settings after changing it. This setting is stored in SQL and applies to workers without restarting containers.
+
+When enabled, queued work resumes after the displayed quota reset time, provided the worker is running. When disabled, quota-paused work remains held even after that time. Enable the option and save to release the hold once the reset time has passed. Turning it on early does not bypass the quota. Turning it off does not cancel a running request or disable ordinary discovery scheduling; it controls resumption after quota exhaustion.
+
+The existing job continues from saved progress. Completed classifications and generated versions are preserved. This is not a fresh discovery of every feed and does not automatically retry old terminal failures. The dashboard explains whether resumption is automatic or disabled. The built-in worker handles resumption; no Codex automation is required.

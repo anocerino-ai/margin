@@ -369,3 +369,21 @@ def test_provider_daily_quota_preserves_model_budget(db):
     with pytest.raises(QuotaDeferred):
         provider.generate("p", "c", ClassificationResult, "quota", "CLASSIFICATION")
     assert len(db.query("SELECT * FROM llm_attempts")) == 1
+
+
+def test_quota_auto_resume_can_be_disabled_and_reenabled(db):
+    from margin.providers.quota import pause_until, paused
+
+    pause_until(db, 100, "DAILY_REQUEST_BUDGET")
+    assert paused(db, lambda: 101) is None  # Default remains automatic.
+    db.query(
+        "INSERT INTO app_settings VALUES ('runtime',?,?)",
+        [json.dumps({"openrouter_auto_resume": False}), "test"],
+    )
+    assert paused(db, lambda: 101)["auto_resume"] is False
+    assert paused(db, lambda: 99)["auto_resume"] is False
+    db.query(
+        "UPDATE app_settings SET value=? WHERE key='runtime'", [json.dumps({"openrouter_auto_resume": True})]
+    )
+    assert paused(db, lambda: 99) is not None  # Cannot bypass the reset time.
+    assert paused(db, lambda: 101) is None

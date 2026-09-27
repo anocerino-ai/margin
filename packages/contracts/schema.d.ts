@@ -1051,6 +1051,11 @@ export interface components {
         /** RuntimeSettings */
         RuntimeSettings: {
             /**
+             * Openrouter Auto Resume
+             * @default true
+             */
+            openrouter_auto_resume: boolean;
+            /**
              * Openrouter Requests Per Minute
              * @default 20
              */
@@ -1079,6 +1084,8 @@ export interface components {
         };
         /** RuntimeSettingsUpdate */
         RuntimeSettingsUpdate: {
+            /** Openrouter Auto Resume */
+            openrouter_auto_resume?: boolean | null;
             /** Openrouter Requests Per Minute */
             openrouter_requests_per_minute?: number | null;
             /** Openrouter Requests Per Day */

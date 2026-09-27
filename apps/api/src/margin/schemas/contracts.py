@@ -201,6 +201,7 @@ class DiscoverySettings(Contract):
 
 
 class RuntimeSettings(Contract):
+    openrouter_auto_resume: bool = True
     openrouter_requests_per_minute: int = Field(default=20, ge=1, le=10000)
     openrouter_requests_per_day: int = Field(default=50, ge=1, le=1000000)
     email_enabled: bool = False
@@ -275,6 +276,7 @@ class DiscoverySettingsUpdate(Contract):
 
 
 class RuntimeSettingsUpdate(Contract):
+    openrouter_auto_resume: bool | None = None
     openrouter_requests_per_minute: int | None = Field(default=None, ge=1, le=10000)
     openrouter_requests_per_day: int | None = Field(default=None, ge=1, le=1000000)
     email_enabled: bool | None = None

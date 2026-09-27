@@ -5272,6 +5272,11 @@
       },
       "RuntimeSettings": {
         "properties": {
+          "openrouter_auto_resume": {
+            "type": "boolean",
+            "title": "Openrouter Auto Resume",
+            "default": true
+          },
           "openrouter_requests_per_minute": {
             "type": "integer",
             "maximum": 10000.0,
@@ -5315,6 +5320,17 @@
       },
       "RuntimeSettingsUpdate": {
         "properties": {
+          "openrouter_auto_resume": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openrouter Auto Resume"
+          },
           "openrouter_requests_per_minute": {
             "anyOf": [
               {

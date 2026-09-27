@@ -75,3 +75,7 @@ Generation outputs contain version history and dependencies. Regeneration preser
 ## Updating clients
 
 The repository stores `packages/contracts/openapi.json` and generated TypeScript types. When routes or schemas change, run `.venv/bin/python scripts/export_contracts.py` and `npm run contracts`, commit both files and verify the UI against the changed response shape. Never add real credentials or session cookies to example requests.
+
+## Quota configuration and status
+
+Runtime settings include `openrouter_requests_per_minute` (default 20), `openrouter_requests_per_day` (default 50), and `openrouter_auto_resume` (default true). GET/PUT/PATCH `/api/v1/settings` exposes these fields to authenticated administrators. GET `/api/v1/system/status` returns `quota_pause`, either null or an object containing `until` (Unix seconds), `reason` and `auto_resume`. A hold with auto-resume disabled remains visible after its timestamp. Enable auto-resume through Settings to release it after the quota window.
