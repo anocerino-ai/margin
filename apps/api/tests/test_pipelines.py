@@ -275,3 +275,28 @@ def test_discovery_balances_sources_and_resumes(setup):
     ] * 5
     assert repo.get("classification_runs", run["id"])["classified_count"] == 20
     assert db.query("SELECT COUNT(*) n FROM source_fetches")[0]["n"] == 5
+
+
+def test_worker_quota_deferral_preserves_job(setup):
+    import time
+
+    from margin.providers.quota import QuotaDeferred, pause_until
+
+    db, repo, settings, _ = setup
+    run = DiscoveryService(repo).request()
+
+    class Deferred:
+        def discovery(self, *args):
+            pause_until(db, time.time() + 3600, "DAILY_REQUEST_BUDGET")
+            raise QuotaDeferred("DAILY_REQUEST_BUDGET")
+
+    worker = Worker(db, settings, lambda fenced: Deferred())
+    assert worker.once()
+    job = db.query("SELECT * FROM job_outbox")[0]
+    assert job["status"] == "PENDING" and job["attempts"] == 0
+    assert repo.get("classification_runs", run["id"])["status"] != "FAILED"
+    assert not worker.once()
+    db.query("DELETE FROM app_settings WHERE key='llm.quota_pause'")
+    worker.factory = lambda fenced: pipeline(fenced, settings)
+    assert worker.once()
+    assert db.query("SELECT status FROM job_outbox")[0]["status"] == "COMPLETED"

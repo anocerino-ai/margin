@@ -5272,6 +5272,20 @@
       },
       "RuntimeSettings": {
         "properties": {
+          "openrouter_requests_per_minute": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Openrouter Requests Per Minute",
+            "default": 20
+          },
+          "openrouter_requests_per_day": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Openrouter Requests Per Day",
+            "default": 50
+          },
           "email_enabled": {
             "type": "boolean",
             "title": "Email Enabled",
@@ -5301,6 +5315,32 @@
       },
       "RuntimeSettingsUpdate": {
         "properties": {
+          "openrouter_requests_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openrouter Requests Per Minute"
+          },
+          "openrouter_requests_per_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openrouter Requests Per Day"
+          },
           "email_enabled": {
             "anyOf": [
               {

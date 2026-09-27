@@ -1051,6 +1051,16 @@ export interface components {
         /** RuntimeSettings */
         RuntimeSettings: {
             /**
+             * Openrouter Requests Per Minute
+             * @default 20
+             */
+            openrouter_requests_per_minute: number;
+            /**
+             * Openrouter Requests Per Day
+             * @default 50
+             */
+            openrouter_requests_per_day: number;
+            /**
              * Email Enabled
              * @default false
              */
@@ -1069,6 +1079,10 @@ export interface components {
         };
         /** RuntimeSettingsUpdate */
         RuntimeSettingsUpdate: {
+            /** Openrouter Requests Per Minute */
+            openrouter_requests_per_minute?: number | null;
+            /** Openrouter Requests Per Day */
+            openrouter_requests_per_day?: number | null;
             /** Email Enabled */
             email_enabled?: boolean | null;
             discovery?: components["schemas"]["DiscoverySettingsUpdate"] | null;

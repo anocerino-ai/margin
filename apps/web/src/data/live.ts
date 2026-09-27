@@ -133,6 +133,8 @@ export interface Model {
   enabled: boolean
 }
 export interface Settings {
+  openrouter_requests_per_minute: number
+  openrouter_requests_per_day: number
   email_enabled: boolean
   discovery: {
     enabled: boolean
@@ -146,6 +148,7 @@ export interface Settings {
   crawl_cache_days: number
 }
 export interface SystemStatus {
+  quota_pause?: { until: number; reason: string } | null
   storage: string
   openrouter: boolean
   firecrawl: boolean

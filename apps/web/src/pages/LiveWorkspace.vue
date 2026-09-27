@@ -439,6 +439,7 @@ onUnmounted(() => {
   </div>
   <p v-if="loading" role="status" class="caption-note">Loading workspace…</p>
   <template v-if="!needsAuth">
+    <p v-if="status?.quota_pause" class="caption-note">OpenRouter quota reached. Work is saved and resumes after {{ date(new Date(status.quota_pause.until * 1000).toISOString()) }}. {{ status.quota_pause.reason }}</p>
     <div v-if="status && !status.worker_online" class="caption-note">
       Worker offline: new requests will stay queued until it starts.
     </div>
@@ -976,6 +977,8 @@ onUnmounted(() => {
                 max="1"
                 step="0.05"
                 v-model.number="settings.classification_threshold" /></label
+            ><label>OpenRouter requests per minute (RPM)<input type="number" min="1" max="10000" v-model.number="settings.openrouter_requests_per_minute" /></label
+            ><label>OpenRouter requests per day<input type="number" min="1" max="1000000" v-model.number="settings.openrouter_requests_per_day" /></label
             ><label
               >Source cache (days)<input
                 type="number"

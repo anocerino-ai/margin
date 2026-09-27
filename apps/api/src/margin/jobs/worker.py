@@ -10,10 +10,11 @@ from margin.config import Settings
 from margin.providers.email import ResendProvider
 from margin.providers.firecrawl import FirecrawlProvider
 from margin.providers.openrouter import OpenRouterProvider
+from margin.providers.quota import QuotaDeferred, RequestQuota, paused
 from margin.providers.retry import RetryPolicy
 from margin.providers.rss import RSSProvider
 from margin.repositories.core import identifier, now
-from margin.runtime import open_database
+from margin.runtime import open_database, runtime_settings
 from margin.security import load_credentials
 from margin.services.pipelines import Pipelines
 
@@ -53,6 +54,13 @@ class Worker:
                 db,
                 self.settings.openrouter_api_key.get_secret_value(),
                 max_output_tokens=self.settings.llm_max_output_tokens,
+                quota=RequestQuota(
+                    db,
+                    lambda: (
+                        runtime_settings(db).openrouter_requests_per_minute,
+                        runtime_settings(db).openrouter_requests_per_day,
+                    ),
+                ),
                 retry_policy=RetryPolicy(
                     self.settings.llm_attempts_per_model,
                     self.settings.llm_retry_initial_seconds,
@@ -72,6 +80,8 @@ class Worker:
 
     def claim(self):
         self.heartbeat()
+        if paused(self.db):
+            return []
         return self.db.query(
             """UPDATE job_outbox SET status='RUNNING',owner=?,lease_until=?,attempts=attempts+1
         WHERE id=(SELECT id FROM job_outbox WHERE status='PENDING' OR (status='RUNNING' AND julianday(lease_until)<julianday('now')) ORDER BY created_at LIMIT 1)
@@ -114,6 +124,11 @@ class Worker:
             fenced.query(
                 "UPDATE job_outbox SET status='COMPLETED',completed_at=?,lease_until=NULL WHERE id=?",
                 [now(), job["id"]],
+            )
+        except QuotaDeferred as exc:
+            fenced.query(
+                "UPDATE job_outbox SET status='PENDING',owner=NULL,lease_until=NULL,attempts=MAX(0,attempts-1),error_code=? WHERE id=?",
+                [str(exc), job["id"]],
             )
         except Exception:
             # A stale owner cannot mark another worker's job or resource failed.

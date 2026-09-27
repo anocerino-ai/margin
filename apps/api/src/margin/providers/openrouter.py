@@ -6,6 +6,7 @@ import time
 import httpx
 from pydantic import ValidationError
 
+from margin.providers.quota import QuotaDeferred, pause_until
 from margin.providers.retry import RetryPolicy
 from margin.repositories.core import identifier, now
 
@@ -22,9 +23,11 @@ class OpenRouterProvider:
         client=None,
         max_output_tokens=5000,
         retry_policy=None,
+        quota=None,
         sleep=time.sleep,
         clock=time.time,
     ):
+        self.quota = quota
         self.retry_policy = retry_policy or RetryPolicy()
         self.sleep, self.clock = sleep, clock
         self.db = db
@@ -51,7 +54,7 @@ class OpenRouterProvider:
         for offset in range(len(models)):
             model = models[(start + offset) % len(models)]["model"]
             used = self.db.query(
-                "SELECT COUNT(*) n FROM llm_attempts WHERE operation_type=? AND operation_id=? AND model=?",
+                "SELECT COUNT(*) n FROM llm_attempts WHERE operation_type=? AND operation_id=? AND model=? AND COALESCE(error_code,'')!='PROVIDER_DAILY_QUOTA_EXHAUSTED'",
                 [operation_type, operation_id, model],
             )[0]["n"]
             for model_attempt in range(used + 1, self.retry_policy.attempts_per_model + 1):
@@ -61,6 +64,8 @@ class OpenRouterProvider:
                     self.sleep(min(20, deadline - self.clock()))
                     # FencedDatabase verifies lease ownership before another provider call.
                     self.db.query("SELECT 1")
+                if self.quota:
+                    self.quota.reserve()
                 attempt_number += 1
                 retry_after = None
                 started = now()
@@ -106,6 +111,12 @@ class OpenRouterProvider:
                 except httpx.HTTPStatusError as exc:
                     status, error = "HTTP_ERROR", f"PROVIDER_HTTP_{exc.response.status_code}"
                     retry_after = exc.response.headers.get("Retry-After")
+                    try:
+                        message = str(exc.response.json().get("error", {}).get("message", ""))
+                    except (ValueError, AttributeError):
+                        message = ""
+                    if exc.response.status_code == 429 and "free-models-per-day" in message:
+                        error = "PROVIDER_DAILY_QUOTA_EXHAUSTED"
                 except httpx.HTTPError:
                     status, error = "HTTP_ERROR", "PROVIDER_NETWORK_ERROR"
                 except ValidationError as exc:
@@ -151,6 +162,12 @@ class OpenRouterProvider:
                         model,
                         error,
                     )
+                if error == "PROVIDER_DAILY_QUOTA_EXHAUSTED" and self.quota:
+                    deadline = max(
+                        self.quota.next_day(), self.clock() + self.retry_policy.delay(1, retry_after)
+                    )
+                    pause_until(self.db, deadline, error)
+                    raise QuotaDeferred(error)
                 if result is not None:
                     return result
                 delay = self.retry_policy.delay(model_attempt, retry_after)

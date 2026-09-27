@@ -7,6 +7,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from margin.providers.openrouter import ModelsExhausted
+from margin.providers.quota import QuotaDeferred
 from margin.repositories.core import Repository, identifier, now
 from margin.runtime import runtime_settings
 from margin.schemas.contracts import ClassificationResult, ContentResult
@@ -84,6 +85,8 @@ class Pipelines:
                 "CLASSIFICATION",
                 validate=validate,
             )
+        except QuotaDeferred:
+            raise
         except Exception as exc:
             error = (
                 "CLASSIFICATION_FAILED"
@@ -484,6 +487,8 @@ class Pipelines:
                 if output["output_type"] == "BLOG":
                     blog = self.db.query("SELECT * FROM generation_versions WHERE id=?", [id])[0]
                 self.event(run_id, "GENERATION", output["output_type"], "SUCCESS")
+            except QuotaDeferred:
+                raise
             except Exception as exc:
                 failures += 1
                 self.event(

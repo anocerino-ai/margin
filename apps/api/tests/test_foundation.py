@@ -318,3 +318,54 @@ def test_retry_after_invalid_and_date():
     assert policy.delay(1, "nan") == 45
     future = format_datetime(datetime.now(UTC) + timedelta(seconds=240))
     assert policy.delay(1, future) > 238
+
+
+def test_shared_quota_spacing_daily_reset(db):
+    from margin.providers.quota import QuotaDeferred, RequestQuota
+
+    clock = [1000.0]
+
+    def sleep(seconds):
+        clock[0] += seconds
+
+    quota = RequestQuota(db, lambda: (20, 2), sleep, lambda: clock[0])
+    quota.reserve()
+    quota.reserve()
+    assert clock[0] == 1003
+    with pytest.raises(QuotaDeferred):
+        quota.reserve()
+    replacement = RequestQuota(db, lambda: (20, 2), sleep, lambda: clock[0])
+    with pytest.raises(QuotaDeferred):
+        replacement.reserve()
+    clock[0] = quota.next_day() + 1
+    replacement.reserve()
+    assert (
+        json.loads(db.query("SELECT value FROM app_settings WHERE key='llm.request_budget'")[0]["value"])[
+            "count"
+        ]
+        == 1
+    )
+
+
+def test_provider_daily_quota_preserves_model_budget(db):
+    from margin.providers.quota import QuotaDeferred, RequestQuota
+
+    db.query("INSERT INTO llm_models VALUES ('a','model-a',0,1)")
+    clock = [1000.0]
+    response = httpx.Response(429, json={"error": {"message": "Rate limit exceeded: free-models-per-day"}})
+    quota = RequestQuota(db, lambda: (20, 50), clock=lambda: clock[0])
+    provider = RetryingProvider(
+        db,
+        "fake",
+        httpx.Client(transport=httpx.MockTransport(lambda r: response)),
+        quota=quota,
+        clock=lambda: clock[0],
+    )
+    with pytest.raises(QuotaDeferred):
+        provider.generate("p", "c", ClassificationResult, "quota", "CLASSIFICATION")
+    assert (
+        db.query("SELECT error_code FROM llm_attempts")[0]["error_code"] == "PROVIDER_DAILY_QUOTA_EXHAUSTED"
+    )
+    with pytest.raises(QuotaDeferred):
+        provider.generate("p", "c", ClassificationResult, "quota", "CLASSIFICATION")
+    assert len(db.query("SELECT * FROM llm_attempts")) == 1

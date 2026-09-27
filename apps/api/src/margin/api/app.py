@@ -463,10 +463,13 @@ def create_app(settings=None, database=None):
 
     @router.get("/system/status")
     def system_status(r=Depends(repo)):
+        from margin.providers.quota import paused
+
         worker = r.db.query(
             "SELECT heartbeat_at FROM worker_status WHERE julianday(heartbeat_at)>julianday('now','-90 seconds') ORDER BY heartbeat_at DESC LIMIT 1"
         )
         return {
+            "quota_pause": paused(r.db),
             "storage": settings.storage,
             "openrouter": bool(settings.openrouter_api_key.get_secret_value()),
             "firecrawl": bool(settings.firecrawl_api_key.get_secret_value()),
