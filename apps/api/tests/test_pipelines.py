@@ -2,6 +2,7 @@ import json
 import sqlite3
 from datetime import UTC, datetime, timedelta
 
+import httpx
 import pytest
 
 from margin.config import ROOT, Settings
@@ -300,3 +301,20 @@ def test_worker_quota_deferral_preserves_job(setup):
     worker.factory = lambda fenced: pipeline(fenced, settings)
     assert worker.once()
     assert db.query("SELECT status FROM job_outbox")[0]["status"] == "COMPLETED"
+
+
+def test_worker_keeps_job_running_when_remote_bridge_fails(setup):
+    db, repo, settings, _ = setup
+    run = DiscoveryService(repo).request()
+
+    class BrokenPipeline:
+        def discovery(self, *args):
+            raise httpx.RemoteProtocolError("bridge disconnected")
+
+    worker = Worker(db, settings, lambda fenced: BrokenPipeline())
+    with pytest.raises(httpx.RemoteProtocolError):
+        worker.once()
+    job = db.query("SELECT status,error_code FROM job_outbox")[0]
+    assert job["status"] == "RUNNING"
+    assert job["error_code"] is None
+    assert repo.get("classification_runs", run["id"])["status"] != "FAILED"

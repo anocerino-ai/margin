@@ -2,9 +2,12 @@
 
 import argparse
 import json
+import logging
 import threading
 import time
 from datetime import UTC, datetime, timedelta
+
+import httpx
 
 from margin.config import Settings
 from margin.providers.email import ResendProvider
@@ -73,10 +76,19 @@ class Worker:
         )
 
     def heartbeat(self):
-        self.db.query(
-            "INSERT INTO worker_status VALUES (?,?) ON CONFLICT(id) DO UPDATE SET heartbeat_at=excluded.heartbeat_at",
-            [self.owner, now()],
-        )
+        # This write is idempotent. Retrying it absorbs brief disconnects from
+        # the remote D1 bridge without risking a duplicate job claim.
+        for attempt in range(3):
+            try:
+                self.db.query(
+                    "INSERT INTO worker_status VALUES (?,?) ON CONFLICT(id) DO UPDATE SET heartbeat_at=excluded.heartbeat_at",
+                    [self.owner, now()],
+                )
+                return
+            except httpx.HTTPError:
+                if attempt == 2:
+                    raise
+                time.sleep(2**attempt)
 
     def claim(self):
         self.heartbeat()
@@ -135,6 +147,10 @@ class Worker:
                 "UPDATE job_outbox SET status='PENDING',owner=NULL,lease_until=NULL,attempts=MAX(0,attempts-1),error_code=? WHERE id=?",
                 [str(exc), job["id"]],
             )
+        except httpx.HTTPError:
+            # A remote bridge failure is not a pipeline failure. Keep the job
+            # leased; a later worker will reclaim it after lease expiry.
+            raise
         except Exception:
             # A stale owner cannot mark another worker's job or resource failed.
             try:
@@ -172,7 +188,16 @@ def main():
     worker = Worker(db, settings)
     try:
         while True:
-            worked = worker.once()
+            try:
+                worked = worker.once()
+            except httpx.HTTPError as exc:
+                logging.getLogger(__name__).warning(
+                    "D1 bridge unavailable; worker will retry: %s", type(exc).__name__
+                )
+                if args.once or args.drain:
+                    raise
+                time.sleep(10)
+                continue
             if args.once or args.drain and not worked:
                 break
             if not worked:
